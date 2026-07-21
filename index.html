@@ -16,7 +16,7 @@
       background-color: #0f172a;
       color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      overflow: hidden; /* Prevents the body itself from scrolling */
+      overflow: hidden;
       position: fixed;
       top: 0;
       left: 0;
@@ -82,16 +82,21 @@
       line-height: 1.6;
       background-color: transparent;
       color: inherit;
-      overflow-y: auto; /* Scroll inside text box only */
+      overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
     textarea::placeholder {
       color: #475569;
     }
 
+    /* WIPE NOTE: ALL CHARACTERS FORCED TO UPPERCASE */
+    #wipe-note {
+      text-transform: uppercase;
+    }
+
     /* TRUE OVERLAY: FIXED DRAGGABLE FLOATING BUTTON */
     #floating-btn {
-      position: fixed; /* Pins to screen glass overlay */
+      position: fixed;
       top: 25px;
       right: 25px;
       width: 68px;
@@ -102,12 +107,12 @@
       border: 3px solid rgba(255, 255, 255, 0.2);
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
       cursor: grab;
-      z-index: 99999; /* Higher than all page layers */
+      z-index: 99999;
       display: flex;
       align-items: center;
       justify-content: center;
-      touch-action: none; /* Disables page pull/scroll while dragging button */
-      transition: transform 0.1s ease, background-color 0.2s ease;
+      touch-action: none;
+      transition: background-color 0.2s ease;
     }
 
     #floating-btn:active {
@@ -115,7 +120,6 @@
       transform: scale(0.95);
     }
 
-    /* Icon size inside the big button */
     #floating-btn svg {
       width: 30px;
       height: 30px;
@@ -125,9 +129,9 @@
 </head>
 <body>
 
-  <!-- PAGE 1: WIPE NOTE (Tap anywhere to clear) -->
+  <!-- PAGE 1: WIPE NOTE (Tap anywhere to clear, ALL CAPS) -->
   <div id="wipe-page" class="page">
-    <textarea id="wipe-note" placeholder="WIPE NOTE: Tap anywhere on the screen to instantly delete everything."></textarea>
+    <textarea id="wipe-note" placeholder="WIPE NOTE: TAP ANYWHERE TO INSTANTLY DELETE EVERYTHING."></textarea>
   </div>
 
   <!-- PAGE 2: SAFE NOTE (Normal note with internal clear button) -->
@@ -144,7 +148,7 @@
     <textarea id="safe-note" placeholder="SAFE NOTE: Type your notes here safely. Tap 'Clear Text' above to wipe, or press the big floating button to go back."></textarea>
   </div>
 
-  <!-- OVERLAY BUTTON (Completely independent of page scrolling) -->
+  <!-- OVERLAY BUTTON -->
   <div id="floating-btn" title="Switch Page">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
@@ -163,6 +167,14 @@
     let isDragging = false;
     let hasMoved = false;
     let startX, startY, initialLeft, initialTop;
+
+    // Force Wipe Note text to stay UPPERCASE as you type
+    wipeNote.addEventListener('input', () => {
+      const start = wipeNote.selectionStart;
+      const end = wipeNote.selectionEnd;
+      wipeNote.value = wipeNote.value.toUpperCase();
+      wipeNote.setSelectionRange(start, end);
+    });
 
     // Helper function to maintain keyboard focus across switches
     function focusAndShowKeyboard(element) {
@@ -209,7 +221,7 @@
       }
     }
 
-    // 4. Fixed Draggable logic for Overlay Button
+    // 4. Draggable logic for Floating Button
     floatBtn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
 
@@ -238,9 +250,12 @@
       let newLeft = initialLeft + dx;
       let newTop = initialTop + dy;
 
-      // Keep strictly within physical screen boundaries
-      newLeft = Math.max(10, Math.min(window.innerWidth - floatBtn.offsetWidth - 10, newLeft));
-      newTop = Math.max(10, Math.min(window.innerHeight - floatBtn.offsetHeight - 10, newTop));
+      // Keep within visible bounds
+      const viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+      const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+      newLeft = Math.max(10, Math.min(viewportWidth - floatBtn.offsetWidth - 10, newLeft));
+      newTop = Math.max(10, Math.min(viewportHeight - floatBtn.offsetHeight - 10, newTop));
 
       floatBtn.style.left = `${newLeft}px`;
       floatBtn.style.top = `${newTop}px`;
@@ -256,6 +271,29 @@
         switchPage();
       }
     });
+
+    // Handle soft keyboard resize/scroll locking using VisualViewport API
+    if (window.visualViewport) {
+      const repositionOnViewport = () => {
+        const rect = floatBtn.getBoundingClientRect();
+        const vw = window.visualViewport.width;
+        const vh = window.visualViewport.height;
+
+        let curLeft = rect.left;
+        let curTop = rect.top;
+
+        // Reposition inside visible boundaries if keyboard pushes screen
+        if (curLeft + floatBtn.offsetWidth > vw) {
+          floatBtn.style.left = `${Math.max(10, vw - floatBtn.offsetWidth - 10)}px`;
+        }
+        if (curTop + floatBtn.offsetHeight > vh) {
+          floatBtn.style.top = `${Math.max(10, vh - floatBtn.offsetHeight - 10)}px`;
+        }
+      };
+
+      window.visualViewport.addEventListener('resize', repositionOnViewport);
+      window.visualViewport.addEventListener('scroll', repositionOnViewport);
+    }
   </script>
 </body>
 </html>
