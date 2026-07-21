@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quick Wipe Note</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+    }
+    textarea {
+      width: 100%;
+      height: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 2rem;
+      font-size: 1.5rem;
+      line-height: 1.6;
+      background-color: transparent;
+      color: inherit;
+    }
+    textarea::placeholder {
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+
+  <textarea id="note" placeholder="Type anything... Tap or click anywhere to instantly delete everything."></textarea>
+
+  <script>
+    const note = document.getElementById('note');
+
+    // Clears all text the moment any touch or mouse click touches the screen
+    window.addEventListener('pointerdown', () => {
+      if (note.value !== '') {
+        note.value = '';
+      }
+    });
+  </script>
+</body>
+</html>
