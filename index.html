@@ -157,6 +157,14 @@
     let hasMoved = false;
     let startX, startY, initialLeft, initialTop;
 
+    // Helper function to force soft keyboard open on mobile browsers
+    function focusAndShowKeyboard(element) {
+      element.focus();
+      // Setting selection range ensures focus triggers virtual keyboard popup on mobile Chrome
+      const len = element.value.length;
+      element.setSelectionRange(len, len);
+    }
+
     // 1. Wipe Note: Tap anywhere on screen to clear
     window.addEventListener('pointerdown', (e) => {
       // Ignore taps on the floating button or the clear button
@@ -164,33 +172,45 @@
 
       if (!isSafeMode && wipeNote.value !== '') {
         wipeNote.value = '';
+        focusAndShowKeyboard(wipeNote);
       }
     });
 
     // 2. Clear Button inside the Safe Note page
     clearBtn.addEventListener('click', () => {
       safeNote.value = '';
-      safeNote.focus();
+      focusAndShowKeyboard(safeNote);
     });
 
-    // 3. Switch between pages
+    // 3. Switch between pages with persistent focus
     function switchPage() {
       isSafeMode = !isSafeMode;
       if (isSafeMode) {
         wipePage.classList.add('hidden');
         safePage.classList.remove('hidden');
         floatBtn.style.backgroundColor = '#10b981'; // Green on Safe Note
-        safeNote.focus();
+        
+        // Retain keyboard focus instantly
+        requestAnimationFrame(() => {
+          focusAndShowKeyboard(safeNote);
+        });
       } else {
         safePage.classList.add('hidden');
         wipePage.classList.remove('hidden');
         floatBtn.style.backgroundColor = '#3b82f6'; // Blue on Wipe Note
-        wipeNote.focus();
+        
+        // Retain keyboard focus instantly when going back to Wipe Note
+        requestAnimationFrame(() => {
+          focusAndShowKeyboard(wipeNote);
+        });
       }
     }
 
     // 4. Draggable logic for the big round floating button
     floatBtn.addEventListener('pointerdown', (e) => {
+      // Prevent button press from removing text focus default behavior
+      e.preventDefault();
+
       isDragging = true;
       hasMoved = false;
       startX = e.clientX;
