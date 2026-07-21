@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Dual Note App</title>
   <style>
     * {
@@ -16,7 +16,10 @@
       background-color: #0f172a;
       color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      overflow: hidden;
+      overflow: hidden; /* Prevents the body itself from scrolling */
+      position: fixed;
+      top: 0;
+      left: 0;
     }
 
     /* Page container */
@@ -28,6 +31,7 @@
       height: 100%;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .hidden {
@@ -40,7 +44,9 @@
       justify-content: flex-end;
       align-items: center;
       padding: 1rem 1.5rem;
-      background-color: rgba(15, 23, 42, 0.8);
+      background-color: rgba(15, 23, 42, 0.95);
+      z-index: 10;
+      flex-shrink: 0;
     }
 
     /* Clear Button inside the Note */
@@ -63,7 +69,7 @@
       opacity: 0.8;
     }
 
-    /* Textarea area */
+    /* Textarea area handles its own internal scrolling */
     textarea {
       flex: 1;
       width: 100%;
@@ -76,14 +82,16 @@
       line-height: 1.6;
       background-color: transparent;
       color: inherit;
+      overflow-y: auto; /* Scroll inside text box only */
+      -webkit-overflow-scrolling: touch;
     }
     textarea::placeholder {
       color: #475569;
     }
 
-    /* BIG ROUND FLOATING BUTTON */
+    /* TRUE OVERLAY: FIXED DRAGGABLE FLOATING BUTTON */
     #floating-btn {
-      position: absolute;
+      position: fixed; /* Pins to screen glass overlay */
       top: 25px;
       right: 25px;
       width: 68px;
@@ -92,13 +100,13 @@
       background-color: #3b82f6;
       color: white;
       border: 3px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
       cursor: grab;
-      z-index: 9999;
+      z-index: 99999; /* Higher than all page layers */
       display: flex;
       align-items: center;
       justify-content: center;
-      touch-action: none; /* Smooth touch-dragging on mobile */
+      touch-action: none; /* Disables page pull/scroll while dragging button */
       transition: transform 0.1s ease, background-color 0.2s ease;
     }
 
@@ -136,9 +144,8 @@
     <textarea id="safe-note" placeholder="SAFE NOTE: Type your notes here safely. Tap 'Clear Text' above to wipe, or press the big floating button to go back."></textarea>
   </div>
 
-  <!-- BIG ROUND DRAGGABLE FLOATING BUTTON -->
+  <!-- OVERLAY BUTTON (Completely independent of page scrolling) -->
   <div id="floating-btn" title="Switch Page">
-    <!-- Navigation icon -->
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
     </svg>
@@ -157,17 +164,15 @@
     let hasMoved = false;
     let startX, startY, initialLeft, initialTop;
 
-    // Helper function to force soft keyboard open on mobile browsers
+    // Helper function to maintain keyboard focus across switches
     function focusAndShowKeyboard(element) {
       element.focus();
-      // Setting selection range ensures focus triggers virtual keyboard popup on mobile Chrome
       const len = element.value.length;
       element.setSelectionRange(len, len);
     }
 
     // 1. Wipe Note: Tap anywhere on screen to clear
     window.addEventListener('pointerdown', (e) => {
-      // Ignore taps on the floating button or the clear button
       if (floatBtn.contains(e.target) || clearBtn.contains(e.target)) return;
 
       if (!isSafeMode && wipeNote.value !== '') {
@@ -182,7 +187,7 @@
       focusAndShowKeyboard(safeNote);
     });
 
-    // 3. Switch between pages with persistent focus
+    // 3. Switch between pages
     function switchPage() {
       isSafeMode = !isSafeMode;
       if (isSafeMode) {
@@ -190,7 +195,6 @@
         safePage.classList.remove('hidden');
         floatBtn.style.backgroundColor = '#10b981'; // Green on Safe Note
         
-        // Retain keyboard focus instantly
         requestAnimationFrame(() => {
           focusAndShowKeyboard(safeNote);
         });
@@ -199,16 +203,14 @@
         wipePage.classList.remove('hidden');
         floatBtn.style.backgroundColor = '#3b82f6'; // Blue on Wipe Note
         
-        // Retain keyboard focus instantly when going back to Wipe Note
         requestAnimationFrame(() => {
           focusAndShowKeyboard(wipeNote);
         });
       }
     }
 
-    // 4. Draggable logic for the big round floating button
+    // 4. Fixed Draggable logic for Overlay Button
     floatBtn.addEventListener('pointerdown', (e) => {
-      // Prevent button press from removing text focus default behavior
       e.preventDefault();
 
       isDragging = true;
@@ -236,7 +238,7 @@
       let newLeft = initialLeft + dx;
       let newTop = initialTop + dy;
 
-      // Keep within screen edges
+      // Keep strictly within physical screen boundaries
       newLeft = Math.max(10, Math.min(window.innerWidth - floatBtn.offsetWidth - 10, newLeft));
       newTop = Math.max(10, Math.min(window.innerHeight - floatBtn.offsetHeight - 10, newTop));
 
@@ -250,7 +252,6 @@
       isDragging = false;
       floatBtn.releasePointerCapture(e.pointerId);
 
-      // If clicked/tapped without dragging, switch pages
       if (!hasMoved) {
         switchPage();
       }
