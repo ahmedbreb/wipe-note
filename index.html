@@ -168,6 +168,11 @@
     let hasMoved = false;
     let startX, startY, initialLeft, initialTop;
 
+    // Track scroll and selection state for Safe Note
+    let savedScrollTop = 0;
+    let savedSelectionStart = 0;
+    let savedSelectionEnd = 0;
+
     // Force Wipe Note text to stay UPPERCASE as you type
     wipeNote.addEventListener('input', () => {
       const start = wipeNote.selectionStart;
@@ -176,7 +181,14 @@
       wipeNote.setSelectionRange(start, end);
     });
 
-    // Helper function to maintain keyboard focus across switches
+    // Save scroll position as user scrolls in Safe Note
+    safeNote.addEventListener('scroll', () => {
+      if (isSafeMode) {
+        savedScrollTop = safeNote.scrollTop;
+      }
+    });
+
+    // Helper function to maintain keyboard focus on Wipe Note
     function focusAndShowKeyboard(element) {
       element.focus();
       const len = element.value.length;
@@ -196,25 +208,39 @@
     // 2. Clear Button inside the Safe Note page
     clearBtn.addEventListener('click', () => {
       safeNote.value = '';
-      focusAndShowKeyboard(safeNote);
+      savedScrollTop = 0;
+      safeNote.scrollTop = 0;
+      safeNote.focus();
     });
 
     // 3. Switch between pages
     function switchPage() {
       isSafeMode = !isSafeMode;
       if (isSafeMode) {
+        // Going TO Safe Note
         wipePage.classList.add('hidden');
         safePage.classList.remove('hidden');
         floatBtn.style.backgroundColor = '#10b981'; // Green on Safe Note
         
+        // Remove active focus to hide keyboard by default on Safe Note
+        safeNote.blur();
+
+        // Restore exact scroll position and cursor location without triggering keyboard
         requestAnimationFrame(() => {
-          focusAndShowKeyboard(safeNote);
+          safeNote.scrollTop = savedScrollTop;
+          safeNote.setSelectionRange(savedSelectionStart, savedSelectionEnd);
         });
       } else {
+        // Leaving Safe Note -> Save current scroll and selection positions
+        savedScrollTop = safeNote.scrollTop;
+        savedSelectionStart = safeNote.selectionStart;
+        savedSelectionEnd = safeNote.selectionEnd;
+
         safePage.classList.add('hidden');
         wipePage.classList.remove('hidden');
         floatBtn.style.backgroundColor = '#3b82f6'; // Blue on Wipe Note
         
+        // Auto-show keyboard for Wipe Note
         requestAnimationFrame(() => {
           focusAndShowKeyboard(wipeNote);
         });
@@ -250,7 +276,6 @@
       let newLeft = initialLeft + dx;
       let newTop = initialTop + dy;
 
-      // Keep within visible bounds
       const viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
@@ -282,7 +307,6 @@
         let curLeft = rect.left;
         let curTop = rect.top;
 
-        // Reposition inside visible boundaries if keyboard pushes screen
         if (curLeft + floatBtn.offsetWidth > vw) {
           floatBtn.style.left = `${Math.max(10, vw - floatBtn.offsetWidth - 10)}px`;
         }
